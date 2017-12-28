@@ -1,0 +1,53 @@
+﻿AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+Description: "An automated alert that lists your orphaned volumes"
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Enter the mailbox that needs to subscribe to the Orphaned Volumes alerts
+    Default: example@example.com
+  Schedule:
+    Type: String
+    Description: A CloudWatch Event Schedule Expression at which to invoke this function; see http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html.
+    Default: cron(5 4 ? * * *)
+  Namespace:
+    Type: String
+    Description: A custom CloudWatch Metrics Namespace (use trailing slash) - custom metric with number of orphaned volumes found will be put here
+    Default: CompanyName/OrphanedVolumesReport/
+Resources:
+  NightlyOrphanedVolumesReport:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: 'OrphanedVolumesReport::OrphanedVolumesReport.Function::FunctionHandler'
+      Runtime: dotnetcore1.0
+      CodeUri: .
+      Description: Nightly report of all volumes that are 'available' - not attached
+      MemorySize: 256
+      Timeout: 300
+      Policies:
+        - EC2DescribePolicy: {}
+        - CloudWatchPutMetricPolicy: {}
+        - SNSPublishMessagePolicy:
+            TopicName: OrphanedVolumesAlert
+      Environment:
+        Variables:
+          SNSTopic: !Ref OrphanedVolumesAlertTopic
+          Namespace: !Ref Namespace
+      Events:
+        Schedule1:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+  OrphanedVolumesAlertTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: "OrphanedVolumesAlert"
+      TopicName: "OrphanedVolumesAlert"
+      Subscription:
+        -
+          Endpoint: !Ref AlertEmail
+          Protocol: "email"
+Outputs:
+  SNSTopic:
+    Description: SNS Topic that the Lambda function will publish alerts to
+    Value: !Ref OrphanedVolumesAlertTopic
