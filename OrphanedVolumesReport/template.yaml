@@ -25,7 +25,7 @@ Resources:
       MemorySize: 256
       Timeout: 300
       Policies:
-        - EC2DescribePolicy: {}
+        - AmazonEC2ReadOnlyAccess
         - CloudWatchPutMetricPolicy: {}
         - SNSPublishMessagePolicy:
             TopicName: OrphanedVolumesAlert
